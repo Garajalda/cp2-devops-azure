@@ -1,0 +1,129 @@
+- name: Create namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_path }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ aks_namespace }}"
+
+- name: Deploy redis
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_path }}"
+    state: present
+    namespace: "{{ aks_namespace }}"
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: redis
+        namespace: "{{ aks_namespace }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: redis
+        template:
+          metadata:
+            labels:
+              app: redis
+          spec:
+            containers:
+              - name: redis
+                image: "{{ acr_login_server }}/redis:casopractico2"
+                ports:
+                  - containerPort: 6379
+                volumeMounts:
+                  - mountPath: /data
+                    name: redis-storage
+            volumes:
+              - name: redis-storage
+                persistentVolumeClaim:
+                  claimName: app-pvc
+
+
+- name: Create PersistentVolumeClaim
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_path }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: app-pvc
+        namespace: "{{ aks_namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+
+
+- name: Create redis service
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_path }}"
+    state: present
+    namespace: "{{ aks_namespace }}"
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: redis
+        namespace: "{{ aks_namespace }}"
+      spec:
+        selector:
+          app: redis
+        ports:
+          - port: 6379
+            targetPort: 6379
+        type: ClusterIP
+
+- name: Deploy application
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_path }}"
+    state: present
+    namespace: "{{ aks_namespace }}"
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: app-k8s
+        namespace: "{{ aks_namespace }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: app-k8s
+        template:
+          metadata:
+            labels:
+              app: app-k8s
+          spec:
+            containers:
+              - name: app
+                image: "{{ acr_login_server }}/vote:casopractico2"
+                ports:
+                  - containerPort: 80
+                env:
+                  - name: REDIS
+                    value: redis
+
+- name: Create LoadBalancer service
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_path }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: app-service
+        namespace: "{{ aks_namespace }}"
+      spec:
+        type: LoadBalancer
+        selector:
+          app: app-k8s
+        ports:
+          - port: 80
+            targetPort: 80

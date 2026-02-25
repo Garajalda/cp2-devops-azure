@@ -1,0 +1,5 @@
+[vm]
+158.158.42.25 ansible_user=azureuser
+
+[localhost]
+127.0.0.1 ansible_connection=local

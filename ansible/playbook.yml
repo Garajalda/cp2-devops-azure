@@ -1,0 +1,41 @@
+- name: Gestion ACR
+  hosts: localhost
+  gather_facts: false
+  tags:
+    - acr
+  vars:
+    acr_login_server: "{{ lookup('env', 'ACR_LOGIN_SERVER') }}"
+    acr_username: "{{ lookup('env', 'ACR_USERNAME') }}"
+    acr_password: "{{ lookup('env', 'ACR_PASSWORD') }}"
+  roles:
+    - role: acr
+      tags:
+        - acr
+
+- name: Despliegue del servidor web en VM
+  hosts: vm
+  become: true
+  tags:
+    - vm
+  vars:
+    acr_login_server: "{{ lookup('env', 'ACR_LOGIN_SERVER') }}"
+    acr_username: "{{ lookup('env', 'ACR_USERNAME') }}"
+    acr_password: "{{ lookup('env', 'ACR_PASSWORD') }}"
+  roles:
+    - role: vm
+      tags:
+        - vm
+
+- name: Deploy app to AKS
+  hosts: localhost
+  gather_facts: false
+  tags:
+    - aks
+  vars:
+    acr_login_server: "{{ lookup('env', 'ACR_LOGIN_SERVER') }}"
+    kubeconfig_path: "{{ lookup('env', 'KUBECONFIG') | default(lookup('env', 'HOME') + '/.kube/config', true) }}"
+    aks_namespace: casopractico2
+  roles:
+    - role: aks
+      tags:
+        - aks

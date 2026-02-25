@@ -1,0 +1,50 @@
+- name: Actualizar repositorios
+  apt:
+    update_cache: yes
+
+- name: Instalar podman
+  apt:
+    name: podman
+    state: present
+
+- name: Login en ACR
+  containers.podman.podman_login:
+    registry: "{{ acr_login_server }}"
+    username: "{{ acr_username }}"
+    password: "{{ acr_password }}"
+
+- name: Crear directorio para contenido web persistente
+  file:
+    path: /opt/web-content
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Crear pagina web personalizada
+  copy:
+    dest: /opt/web-content/index.html
+    mode: "0644"
+    content: |
+      <!doctype html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8">
+        <title>Caso Practico 2</title>
+      </head>
+      <body>
+        <h1>Servidor web desplegado con Podman</h1>
+        <p>Aplicacion servida desde una VM Linux en Azure.</p>
+      </body>
+      </html>
+
+- name: Ejecutar contenedor web desde ACR
+  containers.podman.podman_container:
+    name: webserver-cp2
+    image: "{{ acr_login_server }}/web:casopractico2"
+    state: started
+    recreate: true
+    ports:
+      - "80:80"
+    volume:
+      - /opt/web-content:/usr/share/nginx/html:Z

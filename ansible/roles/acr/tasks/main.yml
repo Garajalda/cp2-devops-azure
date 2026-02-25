@@ -1,0 +1,56 @@
+- name: Login en ACR
+  containers.podman.podman_login:
+    registry: "{{ acr_login_server }}"
+    username: "{{ acr_username }}"
+    password: "{{ acr_password }}"
+
+- name: Pull nginx image
+  containers.podman.podman_image:
+    name: docker.io/library/nginx:alpine
+    state: present
+
+- name: Pull vote image
+  containers.podman.podman_image:
+    name: docker.io/dockersamples/examplevotingapp_vote
+    state: present
+
+- name: Pull redis image
+  containers.podman.podman_image:
+    name: docker.io/library/redis:alpine
+    state: present
+
+- name: Tag nginx image
+  containers.podman.podman_tag:
+    image: docker.io/library/nginx:alpine
+    target_names:
+      - "{{ acr_login_server }}/web:casopractico2"
+
+- name: Tag vote image
+  containers.podman.podman_tag:
+    image: docker.io/dockersamples/examplevotingapp_vote
+    target_names:
+      - "{{ acr_login_server }}/vote:casopractico2"
+
+- name: Tag redis image
+  containers.podman.podman_tag:
+    image: docker.io/library/redis:alpine
+    target_names:
+      - "{{ acr_login_server }}/redis:casopractico2"
+
+- name: Push nginx image al ACR
+  containers.podman.podman_image:
+    name: "{{ acr_login_server }}/web:casopractico2"
+    push: true
+    state: present
+
+- name: Push vote image al ACR
+  containers.podman.podman_image:
+    name: "{{ acr_login_server }}/vote:casopractico2"
+    push: true
+    state: present
+
+- name: Push redis image al ACR
+  containers.podman.podman_image:
+    name: "{{ acr_login_server }}/redis:casopractico2"
+    push: true
+    state: present
